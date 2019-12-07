@@ -1,0 +1,73 @@
+---
+# tasks file for rabbitmq_cluster
+# Some stuff is disabled, as it is not needed right now.
+
+- name: RabbitMQ | Ensure group "{{ rabbitmq_group }}" exists
+  group:
+    name: "{{ rabbitmq_group }}"
+    state: present
+
+- name: RabbitMQ | Ensure user "{{ rabbitmq_user }}" exists
+  user:
+    name: "{{ rabbitmq_user }}"
+    shell: /bin/nologin
+    state: present
+
+# - name: Rabbit | Create persistence directory
+#   file:
+#     path: "{{ rabbitmq_persistence_path }}"
+#     state: directory
+#     owner: "{{ rabbitmq_user }}"
+#     group: "{{ rabbitmq_group }}"
+#     recurse: yes
+#   when: rabbitmq_persistence_enabled
+
+# - name: RabbitMQ | Template configuration file for rabbitmq config
+#   template:
+#     src: rabbitmq.conf.j2
+#     dest: "{{ rabbitmq_config_file }}"
+#     owner: "{{ rabbitmq_user }}"
+#     group: "{{ rabbitmq_group }}"
+#     mode: '0644'
+#   register: rabbitmq_conf
+
+- name: RabbitMQ | Create the rabbitmq network
+  docker_network:
+    name: "{{ rabbitmq_network_name }}"
+
+- name: RabbitMQ | Run rabbitmq container(s)
+  docker_container:
+    name: "{{ 'rabbitmq%02x' | format(item) }}"
+    hostname: "{{ 'rabbitmq%02x' | format(item) }}"
+    image: "{{ rabbitmq_image }}"
+    command:   rabbitmq-server  #/rabbitmq.conf
+    state: started
+    recreate: yes
+    published_ports:
+      - "{{item+8080}}:15672"
+    # volumes:
+      # - "{{rabbitmq_config_file}}:/rabbitmq.conf"
+      # - "{{rabbitmq_persistence_path}}/{{ 'rabbitmq%02x' | format(item) }}:/data"
+    networks:
+      - name: "{{ rabbitmq_network_name }}"
+    env:
+      RABBITMQ_DEFAULT_USER: "{{rabbitmq_default_user}}"
+      RABBITMQ_DEFAULT_PASS: "{{rabbitmq_default_password}}"
+      RABBITMQ_ERLANG_COOKIE: "{{rabbitmq_erlang_cookie}}"
+  loop: "{{ range(rabbitmq_no_containers)|list }}"
+
+#Nodes are not (usually) ready that fast. 
+- name: RabbitMQ | Sleep for 20 seconds and continue with play
+  wait_for:
+    timeout: 20
+  delegate_to: localhost
+
+# This one deserves an explaination
+# Nodes are told to stop the service, reset and join the node rabbitmq00 in a cluster.
+# This is achieved looping the <docker exec -it> command with a list of parameters that
+# is the cartesian product of the list of actions and the list of nodes.
+# The list of nodes is made with the range primitive, but starting from 1, thus leaving
+# the first node (00) as the target of all join commands.
+- name: RabbitMQ | Make the nodes join the cluster
+  command: "docker exec -it {{'rabbitmq%02x'|format(item[1])}} rabbitmqctl {{item[0]}}"
+  loop: "{{['stop_app','reset','join_cluster rabbit@rabbitmq00','start_app'] | product(range(1,rabbitmq_no_containers)) | list}}"

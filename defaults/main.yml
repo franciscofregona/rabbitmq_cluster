@@ -1,0 +1,20 @@
+---
+# defaults file for rabbitmq_cluster
+rabbitmq_user: "rabbitmq"
+rabbitmq_group: "rabbitmq"
+rabbitmq_image: "rabbitmq:3.8.2-management"
+rabbitmq_port: "5672"
+rabbitmq_persistence_path: "/rabbitmq/data"
+
+#Number of total containers to set up
+rabbitmq_no_containers: 3
+
+rabbitmq_network_name: "rabbitmqnet"
+
+# Unused as of now.
+rabbitmq_config_file: "/rabbitmq/config/rabbitmq.conf"
+
+# UNDEFINE THIS ONES: fail if not set up elsewhere (hopefully a secrets file)
+# rabbitmq_erlang_cookie: "rabbit"
+# rabbitmq_default_password: "rabbit"
+# rabbitmq_default_user: "rabbit"

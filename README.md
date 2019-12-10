@@ -6,7 +6,7 @@ A role that sets up a RabbitMQ cluster on docker.
 Requirements
 ------------
 
-None
+Docker and docker python module. Great fit to geerlingguy.docker and geerlingguy.pip.
 
 Role Variables
 --------------
@@ -19,7 +19,7 @@ Role Variables
 * rabbitmq_no_containers: 3 #Number of total containers to set up
 * rabbitmq_network_name: "rabbitmqnet"
 
-**Must define**:
+**Must be defined**:
 
 * rabbitmq_erlang_cookie: "rabbit"
 * rabbitmq_default_password: "rabbit"
